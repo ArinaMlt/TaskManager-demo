@@ -9,17 +9,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * 1. POST /tasks — создание новой задачи.
- * <p>
- * 2. GET /tasks/{id} — получение задачи по ID.
- * <p>
- * 3. PUT /tasks/{id} — обновление задачи.
- * <p>
- * 4. DELETE /tasks/{id} — удаление задачи.
- * <p>
- * 5. GET /tasks — получение списка всех задач.
- */
 @Service
 public class TaskService {
     private final TaskRepository taskRepository;
@@ -35,6 +24,7 @@ public class TaskService {
         }
         return taskRepository.save(task);
     }
+
     @LogExecution
     public Optional<Task> getTaskById(Long id) {
         return taskRepository.findById(id);
@@ -47,11 +37,22 @@ public class TaskService {
 
     @LogExecution
     public Optional<Task> updateTask(Long id, Task task) {
-        return taskRepository.update(id, task);
+        Optional<Task> existingTask = taskRepository.findById(id);
+        if (existingTask.isPresent()) {
+            Task updatedTask = existingTask.get();
+            updatedTask.setTitle(task.getTitle());
+            updatedTask.setDescription(task.getDescription());
+            updatedTask.setUserId(task.getUserId());
+
+            taskRepository.save(updatedTask);
+            return Optional.of(updatedTask);
+
+        }
+        return Optional.empty();
     }
 
     @LogTracking
-    public boolean deleteTask(Long id) {
-        return taskRepository.deleteById(id);
+    public void deleteTask(Long id) {
+        taskRepository.deleteById(id);
     }
 }
