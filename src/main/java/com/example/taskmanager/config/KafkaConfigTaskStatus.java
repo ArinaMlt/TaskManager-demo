@@ -1,6 +1,7 @@
 package com.example.taskmanager.config;
 
 import com.example.taskmanager.dto.TaskDto;
+import com.example.taskmanager.dto.TaskStatusDto;
 import com.example.taskmanager.kafka.KafkaTaskProducer;
 import com.example.taskmanager.kafka.MessageDeserializer;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,7 @@ import java.util.Map;
 
 @Slf4j
 @Configuration
-public class KafkaConfig {
+public class KafkaConfigTaskStatus {
 
     @Value("t1-demo")
     private String groupId;
@@ -42,17 +43,17 @@ public class KafkaConfig {
     private String maxPollRecords;
     @Value("${t1.kafka.max.poll.interval.ms:3000}")
     private String maxPollIntervalsMs;
-    @Value("t1_demo_task_registered")
+    @Value("task_status_default")
     private String taskTopic;
 
     @Bean
-    public ConsumerFactory<String, TaskDto> consumerListenerFactory() {
+    public ConsumerFactory<String, TaskStatusDto> taskStatusDtoConsumerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, servers); //сервер
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId); // консьюмер группа
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId + "_taskDto"); // консьюмер группа
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class); // кто будет десериализировать ключ
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MessageDeserializer.class); // кто будет десериализировать value
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.example.taskmanager.dto.TaskDto"); //во что маппим? где это взять
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.example.taskmanager.dto.TaskStatusDto"); //во что маппим? где это взять
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*"); // если маппим во что-то вне пакета - кафка не сделает этого
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false); // заголовки (конфиг проперти для использования заголовков)
         props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sessionTimeout);
@@ -71,8 +72,8 @@ public class KafkaConfig {
     }
 
     @Bean
-    ConcurrentKafkaListenerContainerFactory<String, TaskDto> kafkaListenerContainerFactory(@Qualifier("consumerListenerFactory") ConsumerFactory<String, TaskDto> consumerFactory) {
-        ConcurrentKafkaListenerContainerFactory<String, TaskDto> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    ConcurrentKafkaListenerContainerFactory<String, TaskStatusDto> taskStatusDtoKafkaListenerContainerFactory(@Qualifier("taskStatusDtoConsumerFactory") ConsumerFactory<String, TaskStatusDto> consumerFactory) {
+        ConcurrentKafkaListenerContainerFactory<String, TaskStatusDto> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factoryBuilder(consumerFactory, factory);
         return factory;
     }
@@ -98,8 +99,8 @@ public class KafkaConfig {
         return handler;
     }
 
-    @Bean("task")
-    public KafkaTemplate<String, TaskDto> kafkaTemplate(ProducerFactory<String, TaskDto> producerPatFactory) {
+    @Bean("taskStatus")
+    public KafkaTemplate<String, TaskStatusDto> kafkaTemplate(ProducerFactory<String, TaskStatusDto> producerPatFactory) {
         return new KafkaTemplate<>(producerPatFactory);
     }
 
@@ -107,13 +108,13 @@ public class KafkaConfig {
     @ConditionalOnProperty(value = "t1.kafka.producer.enable",
             havingValue = "true",
             matchIfMissing = true)
-    public KafkaTaskProducer producerClient(@Qualifier("task") KafkaTemplate template) {
+    public KafkaTaskProducer producerClientTaskStatus(@Qualifier("taskStatus") KafkaTemplate template) {
         template.setDefaultTopic(taskTopic);
         return new KafkaTaskProducer(template);
     }
 
     @Bean
-    public ProducerFactory<String, TaskDto> producerClientFactory() {
+    public ProducerFactory<String, TaskStatusDto> producerClientFactoryTaskStatus() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);

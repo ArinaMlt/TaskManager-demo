@@ -1,29 +1,19 @@
 package com.example.taskmanager.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
-@JsonIgnoreProperties(ignoreUnknown = true)
-@Builder
+@AllArgsConstructor
 public class TaskDto {
 
-    @JsonProperty("id")
     private Long id;
-
-    @JsonProperty("title")
     private String title;
-
-    @JsonProperty("description")
+    private String status;
     private String description;
-
-    @JsonProperty("userId")
     private Long userId;
 }
