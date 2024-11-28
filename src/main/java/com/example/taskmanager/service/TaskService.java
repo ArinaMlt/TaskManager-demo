@@ -72,25 +72,4 @@ public class TaskService {
     public void deleteTask(Long id) {
         taskRepository.deleteById(id);
     }
-
-   /* public void registerTasks(List<Task> tasks) {
-        log.info("Registering tasks... {}", tasks);
-        taskRepository.saveAll(tasks)
-                .stream()
-                .map(Task::getId)
-                .forEach(kafkaTaskProducer::send);
-    }*/
-
-   /* public List<TaskDto> parseJson() {
-        ObjectMapper mapper = new ObjectMapper();
-
-        TaskDto[] tasks;
-        try {
-            tasks = mapper.readValue(new File("src/main/resources/MOCK_DATA.json"), TaskDto[].class);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return Arrays.asList(tasks);
-    }*/
 }
