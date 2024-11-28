@@ -5,21 +5,16 @@ import com.example.taskmanager.aspect.LogTracking;
 import com.example.taskmanager.dto.TaskDto;
 import com.example.taskmanager.dto.TaskStatusDto;
 import com.example.taskmanager.entity.Task;
-import com.example.taskmanager.kafka.KafkaTaskProducer;
+import com.example.taskmanager.exception.TaskNotFoundException;
 import com.example.taskmanager.kafka.KafkaTaskStatusProducer;
 import com.example.taskmanager.mapper.TaskMapper;
 import com.example.taskmanager.repository.TaskRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,58 +22,50 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TaskService {
     private final TaskRepository taskRepository;
-    private final KafkaTaskProducer kafkaTaskProducer;
     private final KafkaTaskStatusProducer kafkaTaskStatusProducer;
     @Value("task_status")
     private String topic;
 
 
     @LogExecution
-    public TaskDto createTask(TaskDto taskDto) {
+    public void createTask(TaskDto taskDto) {
         if (taskDto.getTitle() == null || taskDto.getTitle().isEmpty()) {
             throw new IllegalArgumentException("Task title cannot be null or empty");
         }
-        Task task = taskRepository.save(TaskMapper.toEntity(taskDto));
-        return TaskMapper.toDTO(task);
+        taskRepository.save(TaskMapper.toEntity(taskDto));
     }
 
     @LogExecution
-    public Optional<TaskDto> getTaskById(Long id) {
-        Optional<Task> task = taskRepository.findById(id);
-        if (task.isPresent()) {
-            return Optional.of(TaskMapper.toDTO(task.get()));
-        } else {
-            return Optional.empty();
-        }
+    public TaskDto getTaskById(Long id) {
+        return taskRepository.findById(id)
+                .map(TaskMapper::toDTO)
+                .orElseThrow(() -> new TaskNotFoundException("Task with id " + id + " not found"));
     }
 
     @LogTracking
     public List<TaskDto> getAllTasks() {
-        List<Task> tasks = taskRepository.findAll();
-        return tasks.stream()
+        return taskRepository.findAll()
+                .stream()
                 .map(task -> TaskMapper.toDTO(task))
                 .collect(Collectors.toList());
     }
 
     @LogExecution
-    public Optional<TaskDto> updateTask(Long id, TaskDto taskDto) {
-        Optional<Task> existingTask = taskRepository.findById(id);
-        if (existingTask.isPresent()) {
-            Task updatedTask = existingTask.get();
-            updatedTask.setTitle(taskDto.getTitle());
-            if (updatedTask.getStatus() != taskDto.getStatus()) {
-                updatedTask.setStatus(taskDto.getStatus());
-                TaskStatusDto taskStatusDto = new TaskStatusDto(id, taskDto.getStatus());
-                kafkaTaskStatusProducer.sendTo(topic, taskStatusDto);
-            }
-            updatedTask.setDescription(taskDto.getDescription());
-            updatedTask.setUserId(taskDto.getUserId());
+    public TaskDto updateTask(Long id, TaskDto taskDto) {
+        Task existingTask = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFoundException("Задача с id " + id + " не найдена"));
 
-            taskRepository.save(updatedTask);
-            return Optional.of(TaskMapper.toDTO(updatedTask));
-
+        existingTask.setTitle(taskDto.getTitle());
+        if (existingTask.getStatus() != taskDto.getStatus()) {
+            existingTask.setStatus(taskDto.getStatus());
+            TaskStatusDto taskStatusDto = new TaskStatusDto(id, taskDto.getStatus());
+            kafkaTaskStatusProducer.sendTo(topic, taskStatusDto);
         }
-        return Optional.empty();
+        existingTask.setDescription(taskDto.getDescription());
+        existingTask.setUserId(taskDto.getUserId());
+
+        Task updatedTask = taskRepository.save(existingTask);
+        return TaskMapper.toDTO(updatedTask);
     }
 
     @LogTracking
@@ -86,15 +73,15 @@ public class TaskService {
         taskRepository.deleteById(id);
     }
 
-    public void registerTasks(List<Task> tasks) {
+   /* public void registerTasks(List<Task> tasks) {
         log.info("Registering tasks... {}", tasks);
         taskRepository.saveAll(tasks)
                 .stream()
                 .map(Task::getId)
                 .forEach(kafkaTaskProducer::send);
-    }
+    }*/
 
-    public List<TaskDto> parseJson() {
+   /* public List<TaskDto> parseJson() {
         ObjectMapper mapper = new ObjectMapper();
 
         TaskDto[] tasks;
@@ -105,5 +92,5 @@ public class TaskService {
         }
 
         return Arrays.asList(tasks);
-    }
+    }*/
 }

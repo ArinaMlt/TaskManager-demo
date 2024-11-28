@@ -2,7 +2,7 @@ package com.example.taskmanager.config;
 
 import com.example.taskmanager.dto.TaskDto;
 import com.example.taskmanager.dto.TaskStatusDto;
-import com.example.taskmanager.kafka.KafkaTaskProducer;
+import com.example.taskmanager.kafka.KafkaTaskStatusProducer;
 import com.example.taskmanager.kafka.MessageDeserializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -108,9 +108,9 @@ public class KafkaConfigTaskStatus {
     @ConditionalOnProperty(value = "t1.kafka.producer.enable",
             havingValue = "true",
             matchIfMissing = true)
-    public KafkaTaskProducer producerClientTaskStatus(@Qualifier("taskStatus") KafkaTemplate template) {
+    public KafkaTaskStatusProducer producerClientTaskStatus(@Qualifier("taskStatus") KafkaTemplate template) {
         template.setDefaultTopic(taskTopic);
-        return new KafkaTaskProducer(template);
+        return new KafkaTaskStatusProducer(template);
     }
 
     @Bean
